@@ -59,6 +59,7 @@
     ".",
     "debug",
     "extensions",
+    "proxy",
     "storage"
   ]
   revision = "a22e0d396c7abb406fb624397ee3d5f2e55134c0"
@@ -196,6 +197,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3955787434a0030bbfaa32c1d383e8285f522081a6e0db5d5f6575dde09a85cb"
+  inputs-digest = "4a9e231dc43ba865c121de4c800b012bb2899deeb662614b35b7348c9120ccc1"
   solver-name = "gps-cdcl"
   solver-version = 1

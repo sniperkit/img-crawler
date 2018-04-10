@@ -3,9 +3,10 @@ package dao
 import (
 	"database/sql"
 	"errors"
+	"time"
+
 	"img-crawler/src/log"
 	"img-crawler/src/utils"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	sq "gopkg.in/Masterminds/squirrel.v1"
@@ -38,21 +39,21 @@ type TaskItem struct {
 }
 
 type TaskDAO interface {
-	Create(*Task) (string, error)
+	Create(*Task) (uint64, error)
 	Get(map[string]interface{}, bool) (*Task, error)
-	List(map[string]interface{}, bool) ([]*Task, error)
+	List(map[string]interface{}) ([]*Task, error)
 	Update(map[string]interface{}, map[string]interface{}) (int64, error)
 }
 
 type TaskDAOImpl struct {
-	pool *mysql.Pool
+	pool *Pool
 	tb   string // table name
 	tb_n string // nested table name
 }
 
 var _ TaskDAO = (*TaskDAOImpl)(nil)
 
-func NewTaskDAO(pool *mysql.Pool) *TaskDAOImpl {
+func NewTaskDAO(pool *Pool) *TaskDAOImpl {
 	return &TaskDAOImpl{
 		pool: pool,
 		tb:   "tasks",
@@ -116,9 +117,9 @@ func (dao *TaskDAOImpl) Create(task *Task) (id uint64, err error) {
 
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
 
-	tx := db.MustBeginTx(ctx, nil)
+	tx := db.MustBegin()
 
-	id := dao.createTask(tx, GetMapping(*task))
+	id = dao.createTask(tx, GetMapping(*task))
 
 	if task.items != nil {
 		for _, item := range task.items {
@@ -173,7 +174,7 @@ func (dao *TaskDAOImpl) Update(conditions, clauses map[string]interface{}) (int6
 
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
 
-	tx := db.MustBeginTx(ctx, nil)
+	tx := db.MustBegin()
 
 	sql, args, err := sq.Update(dao.tb).SetMap(clauses).Where(conditions).ToSql()
 	utils.CheckError(err)

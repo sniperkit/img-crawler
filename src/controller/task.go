@@ -3,8 +3,9 @@ package controller
 import (
 	"img-crawler/src/log"
 
+	"img-crawler/src/dao"
+
 	"github.com/gocolly/colly"
-	//"img-crawler/src/dao"
 )
 
 type Task struct {
@@ -23,7 +24,7 @@ func NewTask(name, desc string, seeds []string) *Task {
 		C:     CreateCollector()}
 }
 
-func (task *Task) Init() {
+func (task *Task) before() {
 	c := task.C
 
 	c.OnRequest(func(r *colly.Request) {
@@ -39,7 +40,7 @@ func (task *Task) Init() {
 func (task *Task) Do() {
 
 	log.Infof("Job %s Begin", task.name)
-	task.Init()
+	task.before()
 	task.createTask()
 	for _, url := range task.seeds {
 		task.C.Visit(url)
@@ -53,4 +54,12 @@ func (task *Task) Do() {
 // insert into task
 func (task *Task) createTask() {
 
+}
+
+var (
+	taskDao *dao.TaskDAOImpl
+)
+
+func init() {
+	taskDao = dao.NewTaskDAO(dao.Mpool)
 }

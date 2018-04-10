@@ -15,10 +15,11 @@ type BaseConfig struct {
 	Log_path  string `json: "log_path"`
 	Img_dir   string `json: "img_dir"`
 	Collector struct {
-		Max_depth    int    `json: "max_depth"`
-		Cache_dir    string `json: "cache_dir"`
-		Parallelism  int    `json: "parallelism"`
-		Random_delay int    `json: "random_delay"`
+		Max_depth    int      `json: "max_depth"`
+		Cache_dir    string   `json: "cache_dir"`
+		Parallelism  int      `json: "parallelism"`
+		Random_delay int      `json: "random_delay"`
+		Proxy        []string `json: "proxy"`
 	} `json: "collector"`
 }
 

@@ -36,12 +36,12 @@ bin/spider
 ```
 
 ## 参考
-[colly github](https://github.com/gocolly/colly)
-[colly Doc](http://go-colly.org/docs/)
-[colly API](https://godoc.org/github.com/gocolly/colly)
-[W3school](http://www.w3school.com.cn/h.asp)
-[CSS Selector](http://www.w3school.com.cn/cssref/css_selectors.asp)
-[goquery](https://godoc.org/github.com/PuerkitoBio/goquery)
+- [colly github](https://github.com/gocolly/colly)
+- [colly Doc](http://go-colly.org/docs/)
+- [colly API](https://godoc.org/github.com/gocolly/colly)
+- [W3school](http://www.w3school.com.cn/h.asp)
+- [CSS Selector](http://www.w3school.com.cn/cssref/css_selectors.asp)
+- [goquery](https://godoc.org/github.com/PuerkitoBio/goquery)
 
 
 [回到顶部](#readme)

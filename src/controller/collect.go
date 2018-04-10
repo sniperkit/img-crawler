@@ -7,8 +7,10 @@ import (
 
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
+	"github.com/gocolly/colly/proxy"
 
 	"img-crawler/src/conf"
+	"img-crawler/src/log"
 )
 
 func CreateCollector() *colly.Collector {
@@ -39,6 +41,17 @@ func CreateCollector() *colly.Collector {
 	/* Random UA & Refer */
 	extensions.RandomUserAgent(c)
 	extensions.Referrer(c)
+
+	/* Set proxy */
+	pxy := conf.Config.Collector.Proxy
+	if len(pxy) > 0 {
+		rp, err := proxy.RoundRobinProxySwitcher(pxy...)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c.SetProxyFunc(rp)
+	}
 
 	c.MaxDepth = conf.Config.Collector.Max_depth
 	c.CacheDir = conf.Config.Collector.Cache_dir

@@ -35,8 +35,7 @@ func (task *Task) GeneralCB(cs ...*colly.Collector) {
 		})
 
 		c.OnError(func(r *colly.Response, err error) {
-            ctx := r.Request.Ctx
-			log.Warnf("Error Request %s %s", ctx.Get("phase"), err)
+			log.Warnf("Error Request %s %s", r.Request.URL.String(), err)
 		})
 	}
 

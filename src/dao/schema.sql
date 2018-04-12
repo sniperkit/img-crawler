@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `tasks` (
     `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `modify_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `unq_name` (`name`),
+    UNIQUE KEY `unq_name` (`name`)
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -26,6 +26,6 @@ CREATE TABLE IF NOT EXISTS `task_items` (
     `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `modify_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `unq_name_url` (`name`, `url`),
+    UNIQUE KEY `unq_name_url` (`name`, `url`)
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

@@ -10,17 +10,19 @@ import (
 
 func Ent_qq() *controller.Task {
 
-	task := controller.NewTask(
+	task := controller.NewTaskController(
 		"qq娱乐明星库",
 		"test",
 		[]string{"http://ent.qq.com/c/all_star.shtml"})
 
 	c := task.C
 	c.URLFilters = []*regexp.Regexp{
-		regexp.MustCompile(`^https?://.*\.qq\.com/.*`),
+		regexp.MustCompile("^https?://.*\\.qq\\.com/.*"),
+		regexp.MustCompile("^http://mat1\\.gtimg\\.com"),
 	}
 
 	detailCollector := c.Clone()
+	task.GeneralCB(c, detailCollector)
 
 	// callback
 	// seed html
@@ -47,31 +49,42 @@ func Ent_qq() *controller.Task {
 		})
 
 	// photo html
-	detailCollector.OnHTML(`#disp_right  a[onclick*="goPage"]`,
+	detailCollector.OnHTML(`div[id="disp_right"]`,
 		func(e *colly.HTMLElement) {
 
-			img := e.ChildAttr("img", "src")
-			if img == "" {
-				return
-			}
-
-			// get one image
 			ctx := e.Request.Ctx
 			title := ctx.Get("title")
-			log.Infof("[%s] got one image, src=%s", title, img)
 
-			// next image
-			// onclick = oSerialPicInfoRight.goPage(21157);return false;
-			onclikc := e.Attr("onclick")
-			reg := regexp.MustCompile(`\([0-9]+\)`)
-			next := string(reg.Find([]byte(onclikc)))
-			if next == "" {
-				return
-			}
+			log.Infof("chenqi %s", e.Response.Body)
+			e.ForEach(`a[href]`, func(_ int, el *colly.HTMLElement) {
+				log.Infof("test %s", title)
 
-			picid := next[1 : len(next)-1]
-			link := ctx.Get("base_link") + "&picid=" + picid
-			detailCollector.Request("GET", link, nil, ctx, nil)
+				img := el.ChildAttr("img", "src")
+				if img == "" {
+					return
+				}
+
+				href := el.Attr("href")
+				var picid string
+				if onclikc := el.Attr("onclick"); onclikc != "" {
+					reg := regexp.MustCompile(`\([0-9]+\)`)
+					if next := string(reg.Find([]byte(onclikc))); next != "" {
+						picid = next[1 : len(next)-1]
+					}
+				}
+
+				if href == "#" && picid == "" {
+					return
+				}
+
+				// get one image
+				log.Infof("[%s] got one image, src=%s", title, img)
+				link := ctx.Get("base_link") + "&picid=" + picid
+				detailCollector.Request("GET", link, nil, ctx, nil)
+
+			})
+
+			return
 		})
 
 	return task

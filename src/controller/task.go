@@ -1,9 +1,10 @@
 package controller
 
 import (
-	"img-crawler/src/log"
-
+	"database/sql"
 	"img-crawler/src/dao"
+	"img-crawler/src/log"
+	"strings"
 
 	"github.com/gocolly/colly"
 )
@@ -15,7 +16,7 @@ type Task struct {
 	C     *colly.Collector
 }
 
-func NewTask(name, desc string, seeds []string) *Task {
+func NewTaskController(name, desc string, seeds []string) *Task {
 
 	return &Task{
 		name:  name,
@@ -24,23 +25,26 @@ func NewTask(name, desc string, seeds []string) *Task {
 		C:     CreateCollector()}
 }
 
-func (task *Task) before() {
-	c := task.C
+// general call back
+func (task *Task) GeneralCB(cs ...*colly.Collector) {
 
-	c.OnRequest(func(r *colly.Request) {
-		log.Infoln("Visiting", r.URL.String())
-	})
+	for _, c := range cs {
 
-	c.OnError(func(r *colly.Response, err error) {
-		log.Infoln("Error Request:", r.Request.URL)
-	})
+		c.OnRequest(func(r *colly.Request) {
+			log.Infoln("Visiting", r.URL.String())
+		})
+
+		c.OnError(func(r *colly.Response, err error) {
+            ctx := r.Request.Ctx
+			log.Warnf("Error Request %s %s", ctx.Get("phase"), err)
+		})
+	}
 
 }
 
 func (task *Task) Do() {
 
-	log.Infof("Job %s Begin", task.name)
-	task.before()
+	log.Infof("Job %s Begin, seeds=%s", task.name, task.seeds)
 	task.createTask()
 	for _, url := range task.seeds {
 		task.C.Visit(url)
@@ -51,15 +55,21 @@ func (task *Task) Do() {
 	log.Infof("Job %s Done!", task.name)
 }
 
-// insert into task
-func (task *Task) createTask() {
+func (task *Task) createTask() (uint64, error) {
+	t := new(dao.Task)
+	t.Name = task.name
+	t.Seeds = strings.Join(task.seeds, ",")
+	if len(task.desc) > 0 {
+		t.Desc = sql.NullString{task.desc, true}
+	}
 
+	return taskDAO.Create(t)
 }
 
 var (
-	taskDao *dao.TaskDAOImpl
+	taskDAO *dao.TaskDAOImpl
 )
 
 func init() {
-	taskDao = dao.NewTaskDAO(dao.Mpool)
+	taskDAO = dao.NewTaskDAO(dao.Mpool)
 }

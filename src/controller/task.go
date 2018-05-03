@@ -5,36 +5,36 @@ import (
 	"img-crawler/src/dao"
 	"img-crawler/src/log"
 	"strings"
+
 	"github.com/gocolly/colly"
 )
 
 type Task struct {
-	name    string
-	seeds   []string
-	desc    string
-	C       []*colly.Collector
+	name  string
+	seeds []string
+	desc  string
+	C     []*colly.Collector
 }
 
 func NewTaskController(name, desc string, seeds []string, num_cc int) *Task {
 
-    if num_cc < 1 {
-        num_cc = 1
-    }
+	if num_cc < 1 {
+		num_cc = 1
+	}
 
-    C := make([]*colly.Collector, num_cc)
-    C[0] = CreateCollector()
+	C := make([]*colly.Collector, num_cc)
+	C[0] = CreateCollector()
 
-    for k := 1; k < len(C); k++ {
-        C[k] = C[0].Clone()
-    }
-
+	for k := 1; k < len(C); k++ {
+		C[k] = C[0].Clone()
+	}
 
 	return &Task{
 		name:  name,
 		seeds: seeds,
 		desc:  desc,
 		C:     C,
-        }
+	}
 }
 
 // general call back
@@ -57,17 +57,19 @@ func (task *Task) Do() {
 
 	log.Infof("Job %s Begin, seeds=%s", task.name, task.seeds)
 
-    task.GeneralCB(task.C...)
+	task.GeneralCB(task.C...)
 
-	task.createTask()
+	id, err := task.createTask()
+	log.Infof("chenqi\t", id, err)
+
 	for _, url := range task.seeds {
 		task.C[0].Visit(url)
 	}
 
 	// wait all requests(threads) finished
-    for _, v := range task.C {
-	    v.Wait()
-    }
+	for _, v := range task.C {
+		v.Wait()
+	}
 
 	log.Infof("Job %s Done!", task.name)
 }

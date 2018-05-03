@@ -1,9 +1,11 @@
 package adaptor
 
 import (
+	"encoding/json"
 	"img-crawler/src/controller"
 	"img-crawler/src/log"
 	"regexp"
+	"strings"
 
 	"github.com/gocolly/colly"
 )
@@ -14,77 +16,76 @@ func Ent_qq() *controller.Task {
 		"qq娱乐明星库",
 		"test",
 		[]string{"http://ent.qq.com/c/all_star.shtml"},
-        2)
+		1)
 
-	c, detailCollector := task.C[0], task.C[1]
+	c := task.C[0]
 
 	c.URLFilters = []*regexp.Regexp{
 		regexp.MustCompile("^https?://.*\\.qq\\.com/.*"),
 		regexp.MustCompile("^http://mat1\\.gtimg\\.com"),
 	}
 
-	// callback
-	// seed html
 	c.OnHTML(`a[title][href$="index.shtml"]:not([title=''])`,
 		func(e *colly.HTMLElement) {
-			link := e.Attr("href")
+
+			link := strings.Replace(e.Attr("href"), "index.shtml", "starpicslist.js", 1)
 			title := e.Attr("title")
-
-			ctx := colly.NewContext()
-			ctx.Put("title", title)
-			detailCollector.Request("GET", link, nil, ctx, nil)
-		})
-
-	// star home html
-	detailCollector.OnHTML(`#star_face > a[href]`,
-		func(e *colly.HTMLElement) {
-
-			link := "http://datalib.ent.qq.com"
-			link += e.Attr("href")
-			ctx := e.Request.Ctx
-			ctx.Put("base_link", link)
-			detailCollector.Request("GET", link, nil, ctx, nil)
-
-		})
-
-	// photo html
-	detailCollector.OnHTML(`div[id="disp_right"]`,
-		func(e *colly.HTMLElement) {
-
-			ctx := e.Request.Ctx
-			title := ctx.Get("title")
-
-			log.Infof("chenqi %s", e.Response.Body)
-			e.ForEach(`a[href]`, func(_ int, el *colly.HTMLElement) {
-				log.Infof("test %s", title)
-
-				img := el.ChildAttr("img", "src")
-				if img == "" {
-					return
-				}
-
-				href := el.Attr("href")
-				var picid string
-				if onclikc := el.Attr("onclick"); onclikc != "" {
-					reg := regexp.MustCompile(`\([0-9]+\)`)
-					if next := string(reg.Find([]byte(onclikc))); next != "" {
-						picid = next[1 : len(next)-1]
-					}
-				}
-
-				if href == "#" && picid == "" {
-					return
-				}
-
-				// get one image
-				log.Infof("[%s] got one image, src=%s", title, img)
-				link := ctx.Get("base_link") + "&picid=" + picid
-				detailCollector.Request("GET", link, nil, ctx, nil)
-
-			})
-
-			return
+			pageProcess(title, link)
 		})
 
 	return task
+}
+
+func pageProcess(title, link string) {
+	defer func() {
+		if r := recover(); r != nil {
+			err := r.(error)
+			log.Errorf("pageProcess errror %s", err)
+		}
+	}()
+
+	res := controller.Download(link)
+	if res == nil {
+		return
+	}
+
+	r := strings.NewReplacer(
+		"\n", "",
+		"\r", "",
+		"\t", "",
+		"arrPic", `"arrPic"`,
+		"nID", `"nID"`,
+		"nDataID", `"nDataID"`,
+		"nTypeID", `"nTypeID"`,
+		"sOriginalImgUrl", `"sOriginalImgUrl"`,
+		"sZoomImgUrl", `"sZoomImgUrl"`,
+		"sDesc", `"sDesc"`,
+	)
+
+	resp := strings.TrimSpace(string(res))
+	resp = r.Replace(resp)
+	jsonData := resp[strings.Index(resp, "{") : len(resp)-1]
+
+	data := struct {
+		ArrPic []struct {
+			NID             string `json: "nID"`
+			NDataID         string `json: "nDataID"`
+			NTypeID         string `json: "nTypeID"`
+			SOriginalImgUrl string `json: "sOriginalImgUrl"`
+			SZoomImgUrl     string `json: "sZoomImgUrl"`
+			SDesc           string `json: "sDesc"`
+		} `json: "arrPic"`
+	}{}
+
+	err := json.Unmarshal([]byte(jsonData), &data)
+	if err != nil {
+		log.Warn("unmarshal error: ", err)
+		return
+	}
+
+	base_url := "http://mat1.gtimg.com/datalib_img/star/"
+	for _, img := range data.ArrPic {
+		url := base_url + img.SOriginalImgUrl
+		log.Infof("got one image %s %s", title, url)
+	}
 }

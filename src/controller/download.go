@@ -12,33 +12,45 @@ import (
 	"time"
 )
 
-func DownloadPic(title, url string) {
+func Save(title string, content []byte) {
+
+	base := filepath.Join(conf.Config.Img_dir, title)
+	err := os.MkdirAll(base, 0666)
+	if err != nil {
+		log.Warnf("Save mkdir %s error %s", title, err)
+		return
+	}
+
+	filename := utils.GenerateUuidV4()
+	err = ioutil.WriteFile(filepath.Join(base, title, filename), content, 0666)
+	if err != nil {
+		log.Warnf("Save write %s error %s", title, err)
+	}
+
+}
+
+func Download(url string) []byte {
+
 	res, err := client.Get(url)
 	if err != nil {
 		log.Warnf("download get %s error %s", url, err)
-		return
+		return nil
 	}
 
 	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		log.Warnf("download bad res, status=%s", url, res.StatusCode)
+		return nil
+	}
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Warnf("download read %s error %s", url, err)
-		return
+		return nil
 	}
 
-	base := filepath.Join(conf.Config.Img_dir, title)
-	err = os.MkdirAll(base, 0666)
-	if err != nil {
-		log.Warnf("download mkdir %s error %s", title, err)
-		return
-	}
-
-	filename := utils.GenerateUuidV5(url)
-	err = ioutil.WriteFile(filepath.Join(base, title, filename), body, 0666)
-	if err != nil {
-		log.Warnf("download write %s error %s", url, err)
-	}
-
+	return body
 }
 
 func NewClient() *http.Client {

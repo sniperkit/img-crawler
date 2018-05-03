@@ -12,11 +12,11 @@ type BaseConfig struct {
 		Slaves []string `json:"slaves"`
 	} `json: "mysql"`
 	Redis_url struct {
-        Switch bool `json: "switch"`
-        URL string `json: "url"`
-        DB int `json: "db"`
-        Prefix string `json: "prefix"`
-    } `json: "redis_backend"`
+		Switch bool   `json: "switch"`
+		URL    string `json: "url"`
+		DB     int    `json: "db"`
+		Prefix string `json: "prefix"`
+	} `json: "redis_backend"`
 	Log_path  string `json: "log_path"`
 	Img_dir   string `json: "img_dir"`
 	Collector struct {

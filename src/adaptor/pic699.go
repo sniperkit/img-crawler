@@ -16,13 +16,12 @@ func Pic_699() *controller.Task {
 		"摄图网",
 		"http://699pic.com/photo/",
 		[]string{"http://699pic.com/photo/"},
-        2)
+		2)
 
 	c, detailCollector := task.C[0], task.C[1]
 	c.URLFilters = []*regexp.Regexp{
 		//regexp.MustCompile("^https?://.*\\.699pic\\.com/.*"),
 	}
-
 
 	// callback
 	// seed html
@@ -75,5 +74,5 @@ func parseURL(title, link string) {
 	img := fmt.Sprintf("http://seopic.699pic.com/photo/%s/%s.jpg_wh1200.jpg", pid[:5], pid[5:])
 	log.Infof("[%s] got one image, src=%s", title, img)
 
-	controller.DownloadPic(title, img)
+	controller.Download(img)
 }

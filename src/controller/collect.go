@@ -7,6 +7,7 @@ import (
 
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
+	"github.com/gocolly/redisstorage"
 	"github.com/gocolly/colly/proxy"
 
 	"img-crawler/src/conf"
@@ -33,10 +34,27 @@ func CreateCollector() *colly.Collector {
 	})
 
 	c.Async = true
+
+    /* global LimitRule */
 	c.Limit(&colly.LimitRule{
+        DomainGlob: "*",
 		Parallelism: conf.Config.Collector.Parallelism,
-		RandomDelay: time.Duration(conf.Config.Collector.Random_delay) * time.Second,
+		RandomDelay: time.Duration(conf.Config.Collector.Random_delay) * time.Millisecond,
 	})
+
+    /* redis storage backend */
+	if conf.Config.Redis_url.Switch {
+        storage := &redisstorage.Storage{
+            Address:  conf.Config.Redis_url.URL,
+            Password: "",
+            DB:       conf.Config.Redis_url.DB,
+            Prefix:   conf.Config.Redis_url.Prefix,
+        }
+		err := c.SetStorage(storage)
+		if err != nil {
+		    panic(err)
+		}
+	}
 
 	/* Random UA & Refer */
 	extensions.RandomUserAgent(c)

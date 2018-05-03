@@ -13,16 +13,15 @@ func Ent_qq() *controller.Task {
 	task := controller.NewTaskController(
 		"qq娱乐明星库",
 		"test",
-		[]string{"http://ent.qq.com/c/all_star.shtml"})
+		[]string{"http://ent.qq.com/c/all_star.shtml"},
+        2)
 
-	c := task.C
+	c, detailCollector := task.C[0], task.C[1]
+
 	c.URLFilters = []*regexp.Regexp{
 		regexp.MustCompile("^https?://.*\\.qq\\.com/.*"),
 		regexp.MustCompile("^http://mat1\\.gtimg\\.com"),
 	}
-
-	detailCollector := c.Clone()
-	task.GeneralCB(c, detailCollector)
 
 	// callback
 	// seed html

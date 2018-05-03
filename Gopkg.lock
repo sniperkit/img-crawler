@@ -32,6 +32,21 @@
   revision = "da6624a57bffc012f598c42f781bd5919fbfadb2"
 
 [[projects]]
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/singleflight",
+    "internal/util"
+  ]
+  revision = "877867d2845fbaf86798befe410b6ceb6f5c29a3"
+  version = "v6.10.2"
+
+[[projects]]
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
@@ -60,15 +75,22 @@
     "debug",
     "extensions",
     "proxy",
+    "queue",
     "storage"
   ]
-  revision = "a22e0d396c7abb406fb624397ee3d5f2e55134c0"
+  revision = "1e90aebad3a77f5360bf923dfb7537f5ea8ec0ae"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gocolly/redisstorage"
+  packages = ["."]
+  revision = "681b42d3f0841ebde76ee827ff4c4f4cbb12f2a8"
 
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -125,7 +147,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
+  revision = "613d6eafa307c6881a737a3c35c0e312e8d3a8c5"
 
 [[projects]]
   branch = "master"
@@ -136,7 +158,7 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "b68f30494add4df6bd8ef5e82803f308e7f7c59c"
+  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
 
 [[projects]]
   branch = "master"
@@ -145,7 +167,7 @@
     "unix",
     "windows"
   ]
-  revision = "3b87a42e500a6dc65dae1a55d0b641295971163e"
+  revision = "78d5f264b493f125018180c204871ecf58a2dce1"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -197,6 +219,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4a9e231dc43ba865c121de4c800b012bb2899deeb662614b35b7348c9120ccc1"
+  inputs-digest = "c6d8d026acbf5c3fe6a05807648d9800201487ab982da172fd9927f723590145"
   solver-name = "gps-cdcl"
   solver-version = 1

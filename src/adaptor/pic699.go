@@ -15,15 +15,14 @@ func Pic_699() *controller.Task {
 	task := controller.NewTaskController(
 		"摄图网",
 		"http://699pic.com/photo/",
-		[]string{"http://699pic.com/photo/"})
+		[]string{"http://699pic.com/photo/"},
+        2)
 
-	c := task.C
+	c, detailCollector := task.C[0], task.C[1]
 	c.URLFilters = []*regexp.Regexp{
 		//regexp.MustCompile("^https?://.*\\.699pic\\.com/.*"),
 	}
 
-	detailCollector := c.Clone()
-	task.GeneralCB(c, detailCollector)
 
 	// callback
 	// seed html

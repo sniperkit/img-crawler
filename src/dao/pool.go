@@ -96,7 +96,8 @@ func newDB(rawurl string, opts ...Option) *DB {
 }
 
 func getDsn(u *url.URL) string {
-	return fmt.Sprintf("%s@tcp(%s)%s?%s", u.User, u.Host, u.Path, u.RawQuery)
+	ret, _ := url.QueryUnescape(fmt.Sprintf("%s@tcp(%s)%s?%s", u.User, u.Host, u.Path, u.RawQuery))
+	return ret
 }
 
 func getTargetInterface(u *url.URL) string {

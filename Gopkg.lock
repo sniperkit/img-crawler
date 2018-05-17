@@ -17,19 +17,19 @@
   branch = "master"
   name = "github.com/antchfx/htmlquery"
   packages = ["."]
-  revision = "9f7717ac9bac5f660391c57e3d496b3c7cf9741f"
+  revision = "7afeab9e150c53c8d592d884b0951a5a3b665a13"
 
 [[projects]]
   branch = "master"
   name = "github.com/antchfx/xmlquery"
   packages = ["."]
-  revision = "f3845cf372319e5428e4c6704089452ddff8ef8b"
+  revision = "52ab7c76b916d59fd2fd5dfd8a616ecf9923b7c0"
 
 [[projects]]
   branch = "master"
   name = "github.com/antchfx/xpath"
   packages = ["."]
-  revision = "da6624a57bffc012f598c42f781bd5919fbfadb2"
+  revision = "7148e5d6bb845772731e3979df279a1b0e8e90ac"
 
 [[projects]]
   name = "github.com/go-redis/redis"
@@ -50,7 +50,7 @@
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
-  version = "v1.3"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/gobwas/glob"
@@ -75,10 +75,9 @@
     "debug",
     "extensions",
     "proxy",
-    "queue",
     "storage"
   ]
-  revision = "1e90aebad3a77f5360bf923dfb7537f5ea8ec0ae"
+  revision = "9a176fe5f869c7062819f7af968c03c662018c06"
 
 [[projects]]
   branch = "master"
@@ -147,7 +146,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "613d6eafa307c6881a737a3c35c0e312e8d3a8c5"
+  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
 
 [[projects]]
   branch = "master"
@@ -158,7 +157,7 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
+  revision = "2491c5de3490fced2f6cff376127c667efeed857"
 
 [[projects]]
   branch = "master"
@@ -167,7 +166,7 @@
     "unix",
     "windows"
   ]
-  revision = "78d5f264b493f125018180c204871ecf58a2dce1"
+  revision = "7c87d13f8e835d2fb3a70a2912c811ed0c1d241b"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -219,6 +218,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c6d8d026acbf5c3fe6a05807648d9800201487ab982da172fd9927f723590145"
+  inputs-digest = "7fbaff6d3e0bff4194d870c67884abc06066911a07393804b4a26e0cb9cbefcd"
   solver-name = "gps-cdcl"
   solver-version = 1

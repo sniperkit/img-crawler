@@ -34,6 +34,7 @@ func CreateCollector() *colly.Collector {
 	})
 
 	c.Async = true
+	c.IgnoreRobotsTxt = true
 
 	/* global LimitRule */
 	c.Limit(&colly.LimitRule{
@@ -43,22 +44,37 @@ func CreateCollector() *colly.Collector {
 	})
 
 	/* redis storage backend */
-	if conf.Config.Redis_url.Switch {
+	if conf.Config.Redis_backend.Switch {
 		storage := &redisstorage.Storage{
-			Address:  conf.Config.Redis_url.URL,
+			Address:  conf.Config.Redis_backend.URL,
 			Password: "",
-			DB:       conf.Config.Redis_url.DB,
-			Prefix:   conf.Config.Redis_url.Prefix,
+			DB:       conf.Config.Redis_backend.DB,
+			Prefix:   conf.Config.Redis_backend.Prefix,
 		}
-		err := c.SetStorage(storage)
-		if err != nil {
-			panic(err)
+
+		if err := c.SetStorage(storage); err != nil {
+			log.Fatal(err)
+		}
+
+		// delete previous data from storage
+		if err := storage.ClearURL(); err != nil {
+			log.Fatal(err)
 		}
 	}
 
 	/* Random UA & Refer */
 	extensions.RandomUserAgent(c)
 	extensions.Referrer(c)
+
+	/* cookiejar */
+	/*
+		j, err := cookiejar.New(&cookiejar.Options{Filename: "cookie.db"})
+		if err == nil {
+			c.SetCookieJar(j)
+		} else {
+	        log.Fatal(err)
+	    }
+	*/
 
 	/* Set proxy */
 	pxy := conf.Config.Collector.Proxy

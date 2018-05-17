@@ -13,10 +13,11 @@ import (
 func Ent_qq() *controller.Task {
 
 	task := controller.NewTaskController(
+		"qq明星",
 		"qq娱乐明星库",
-		"test",
 		[]string{"http://ent.qq.com/c/all_star.shtml"},
-		1)
+		1,
+		nil)
 
 	c := task.C[0]
 
@@ -30,13 +31,13 @@ func Ent_qq() *controller.Task {
 
 			link := strings.Replace(e.Attr("href"), "index.shtml", "starpicslist.js", 1)
 			title := e.Attr("title")
-			pageProcess(title, link)
+			pageProcess(task, title, link)
 		})
 
 	return task
 }
 
-func pageProcess(title, link string) {
+func pageProcess(task *controller.Task, title, link string) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := r.(error)
@@ -86,6 +87,7 @@ func pageProcess(title, link string) {
 	base_url := "http://mat1.gtimg.com/datalib_img/star/"
 	for _, img := range data.ArrPic {
 		url := base_url + img.SOriginalImgUrl
+		task.CreateTaskItem(title, url)
 		log.Infof("got one image %s %s", title, url)
 	}
 }

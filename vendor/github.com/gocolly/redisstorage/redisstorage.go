@@ -61,6 +61,19 @@ func (s *Storage) Clear() error {
 	return s.Client.Del(keys...).Err()
 }
 
+
+func (s *Storage) ClearURL() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.Client.Keys(s.Prefix + ":request:*")
+	keys, err := r.Result()
+	if err != nil {
+		return err
+	}
+	keys = append(keys, s.getQueueID())
+	return s.Client.Del(keys...).Err()
+}
+
 // Visited implements colly/storage.Visited()
 func (s *Storage) Visited(requestID uint64) error {
 	return s.Client.Set(s.getIDStr(requestID), "1", 0).Err()

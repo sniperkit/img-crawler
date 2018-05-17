@@ -1,12 +1,13 @@
 package dao
 
 import (
+	"context"
 	"database/sql"
 	"errors"
-	"time"
-
+	"fmt"
 	"img-crawler/src/log"
 	"img-crawler/src/utils"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	sq "gopkg.in/Masterminds/squirrel.v1"
@@ -16,7 +17,7 @@ type Task struct {
 	ID          uint64         `db:"id,PRIMARY_KEY,AUTO_INCREMENT"`
 	Name        string         `db:"name"`
 	Seeds       string         `db:"seeds"`
-	Desc        sql.NullString `db:"desc"`
+	Desc        sql.NullString `db:"desci"`
 	Status      int            `db:"status"`
 	CreatedTime time.Time      `db:"create_time"`
 	UpdatedTime time.Time      `db:"modify_time"`
@@ -28,7 +29,7 @@ type TaskItem struct {
 	ID          uint64         `db:"id,PRIMARY_KEY,AUTO_INCREMENT"`
 	TaskID      uint64         `db:"task_id"`
 	Name        string         `db:"name"`
-	Desc        sql.NullString `db:"desc"`
+	Desc        sql.NullString `db:"desci"`
 	Url         string         `db:"url"`
 	FilePath    sql.NullString `db:"filepath"`
 	Digest      sql.NullString `db:"digest"`
@@ -39,7 +40,9 @@ type TaskItem struct {
 }
 
 type TaskDAO interface {
-	Create(*Task) (uint64, error)
+	CreateTask(*Task) (uint64, error)
+	CreateTaskItem(item *TaskItem, taskID uint64) (uint64, error)
+	CreateItemTable(uint64)
 	Get(map[string]interface{}, bool) (*Task, error)
 	List(map[string]interface{}) ([]*Task, error)
 	Update(map[string]interface{}, map[string]interface{}) (int64, error)
@@ -58,6 +61,12 @@ func NewTaskDAO(pool *Pool) *TaskDAOImpl {
 		pool: pool,
 		tb:   "tasks",
 		tb_n: "task_items"}
+}
+
+func (dao *TaskDAOImpl) CreateItemTable(id uint64) {
+	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
+	schema := fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_items_%d LIKE %s", id, dao.tb_n)
+	db.MustExec(schema)
 }
 
 func (dao *TaskDAOImpl) Get(conditions map[string]interface{}, withItems bool) (*Task, error) {
@@ -100,69 +109,55 @@ func (dao *TaskDAOImpl) listItems(db *sqlx.DB, id uint64) ([]*TaskItem, error) {
 	return items, nil
 }
 
-func (dao *TaskDAOImpl) Create(task *Task) (id uint64, err error) {
+func (dao *TaskDAOImpl) CreateTask(task *Task) (id uint64, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
-			/*
-			   // TODO: rollback failed transcation
-			   if err == sql.ErrTxDone {
-			       if nil != tx.Rollback() {
-			           log.Warnf("Create Task Rollback Failed {%s}", err)
-			       }
-			   }
-			*/
+			log.Errorf("DAO CreateTask failed: %s", err)
 		}
 	}()
 
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
 
-	tx := db.MustBegin()
-
-	id = dao.createTask(tx, GetMapping(*task))
-
-	if task.items != nil {
-		for _, item := range task.items {
-			dao.createTaskItem(tx, GetMapping(*item), id)
-		}
-	}
-
-	err = tx.Commit()
-	utils.CheckError(err)
-
-	return id, nil
-}
-
-func (dao *TaskDAOImpl) createTask(tx *sqlx.Tx, clauses map[string]interface{}) uint64 {
-
+	clauses := GetMapping(*task)
 	sql, args, err := sq.Insert(dao.tb).SetMap(clauses).ToSql()
 	utils.CheckError(err)
 
 	log.Infof(sql, args...)
 
-	res := tx.MustExec(sql, args...)
+	res := db.MustExec(sql, args...)
 
-	id, err := res.LastInsertId()
+	id2, err := res.LastInsertId()
 	utils.CheckError(err)
 
-	return uint64(id)
+	return uint64(id2), err
 }
 
-func (dao *TaskDAOImpl) createTaskItem(tx *sqlx.Tx, clauses map[string]interface{}, taskID uint64) uint64 {
+func (dao *TaskDAOImpl) CreateTaskItem(item *TaskItem, taskID uint64) (id uint64, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+			log.Errorf("DAO CreateTaskItem failed: %s", err)
+		}
+	}()
 
+	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
+
+	clauses := GetMapping(*item)
 	clauses["task_id"] = taskID
 
-	sql, args, err := sq.Insert(dao.tb_n).SetMap(clauses).ToSql()
+	tb_name := fmt.Sprintf("%s_%d", dao.tb_n, taskID)
+	sql, args, err := sq.Insert(tb_name).SetMap(clauses).ToSql()
 	utils.CheckError(err)
 
 	log.Infof(sql, args...)
 
-	res := tx.MustExec(sql, args...)
+	res := db.MustExec(sql, args...)
 
-	id, err := res.LastInsertId()
+	id2, err := res.LastInsertId()
 	utils.CheckError(err)
 
-	return uint64(id)
+	return uint64(id2), err
 }
 
 /* Dump all fileds, Rewrite one row */
@@ -174,7 +169,8 @@ func (dao *TaskDAOImpl) Update(conditions, clauses map[string]interface{}) (int6
 
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
 
-	tx := db.MustBegin()
+	var ctx = context.Background()
+	tx := db.MustBeginTx(ctx, nil)
 
 	sql, args, err := sq.Update(dao.tb).SetMap(clauses).Where(conditions).ToSql()
 	utils.CheckError(err)

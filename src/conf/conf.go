@@ -11,7 +11,7 @@ type BaseConfig struct {
 		Master string   `json:"master"`
 		Slaves []string `json:"slaves"`
 	} `json: "mysql"`
-	Redis_url struct {
+	Redis_backend struct {
 		Switch bool   `json: "switch"`
 		URL    string `json: "url"`
 		DB     int    `json: "db"`
@@ -59,4 +59,5 @@ func init() {
 	gopath := os.Getenv("GOPATH")
 	//	ENV := os.Getenv("DEPLOY_ENV")
 	load_json(gopath+"/src/img-crawler/src/conf/crawler.conf", Config)
+	//fmt.Print(Config)
 }

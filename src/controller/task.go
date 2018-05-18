@@ -2,10 +2,11 @@ package controller
 
 import (
 	"database/sql"
-	"github.com/gocolly/colly"
 	"img-crawler/src/dao"
 	"img-crawler/src/log"
 	"strings"
+
+	"github.com/gocolly/colly"
 )
 
 type Login struct {
@@ -32,7 +33,7 @@ func NewTaskController(name, desc string, seeds []string, num_cc int, login *Log
 
 	// login
 	if login != nil {
-		//login.Action(l)
+		login.Action(l)
 		l.Wait()
 	}
 
@@ -55,21 +56,21 @@ func (task *Task) GeneralCB(cs ...*colly.Collector) {
 	for _, c := range cs {
 
 		c.OnRequest(func(r *colly.Request) {
-			log.Info("Visiting:", r.URL.String())
-            /*
-			log.Info("Host:", r.Headers.Get("Host"))
-			log.Info("Cookie:", r.Headers.Get("Cookie"))
-			log.Info("Referer:", r.Headers.Get("Referer"))
-			log.Info("User-Agent:", r.Headers.Get("User-Agent"))
-            */
+			/*
+				log.Info("Visiting:", r.URL.String())
+				log.Info("Host:", r.Headers.Get("Host"))
+				log.Info("Cookie:", r.Headers.Get("Cookie"))
+				log.Info("Referer:", r.Headers.Get("Referer"))
+				log.Info("User-Agent:", r.Headers.Get("User-Agent"))
+			*/
 		})
 
 		c.OnResponse(func(r *colly.Response) {
-        /*
-			log.Info("Response:", r.Request.URL.String())
-			log.Info("Status:", r.StatusCode)
-			log.Info("Set-Cookie:", r.Headers.Get("Set-Cookie"))
-            */
+			/*
+				log.Info("Response:", r.Request.URL.String())
+				log.Info("Status:", r.StatusCode)
+				log.Info("Set-Cookie:", r.Headers.Get("Set-Cookie"))
+			*/
 		})
 
 		c.OnError(func(r *colly.Response, err error) {

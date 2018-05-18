@@ -57,7 +57,7 @@ func CreateCollector() *colly.Collector {
 		}
 
 		// delete previous data from storage
-		if err := storage.ClearURL(); err != nil {
+		if err := storage.Clear(); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -68,12 +68,12 @@ func CreateCollector() *colly.Collector {
 
 	/* cookiejar */
 	/*
-		j, err := cookiejar.New(&cookiejar.Options{Filename: "cookie.db"})
-		if err == nil {
-			c.SetCookieJar(j)
-		} else {
-	        log.Fatal(err)
-	    }
+			j, err := cookiejar.New(&cookiejar.Options{Filename: "cookie.db"})
+			if err == nil {
+				c.SetCookieJar(j)
+			} else {
+		        log.Fatal(err)
+		    }
 	*/
 
 	/* Set proxy */

@@ -3,11 +3,13 @@ package adaptor
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gocolly/colly"
 	"img-crawler/src/controller"
 	"img-crawler/src/log"
+	"img-crawler/src/utils"
 	"regexp"
 	"strings"
+
+	"github.com/gocolly/colly"
 )
 
 func RenRenLogin(c *colly.Collector) (err error) {
@@ -41,14 +43,13 @@ func RenRen() *controller.Task {
 
 	c := task.C[0]
 	albumlist := task.C[1]
-	album := task.C[2]
+	photolist := task.C[2]
 
 	c.URLFilters = []*regexp.Regexp{
 		//regexp.MustCompile("^http://mat1\\.gtimg\\.com"),
 	}
 
 	c.OnRequest(func(r *colly.Request) {
-		r.Headers.Set("Host", "friend.renren.com")
 		r.Headers.Set("Upgrade-Insecure-Requests", "1")
 		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36")
 		r.Headers.Set("Cache-Control", "0")
@@ -81,18 +82,43 @@ func RenRen() *controller.Task {
 			friend := fmt.Sprintf("http://friend.renren.com/GetFriendList.do?curpage=0&id=%s", uid)
 			c.Visit(friend)
 
-			/*
-			   link := fmt.Sprintf("http://photo.renren.com/photo/%s/albumlist/v7?offset=0&limit=20", uid)
-			   albumlist.Visit(link)
-			*/
+			link := fmt.Sprintf("http://photo.renren.com/photo/%s/albumlist/v7?offset=0&limit=20", uid)
+			albumlist.Visit(link)
 		})
+
+	albumlist.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Pragma", "no-cache")
+		r.Headers.Set("Cache-Control", "no-cache")
+		r.Headers.Set("Connection", "keep-alive")
+		r.Headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
+		r.Headers.Set("Accept-Encoding", "gzip, deflate")
+		r.Headers.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+		r.Headers.Set("Upgrade-Insecure-Requests", "1")
+		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36")
+	})
 
 	albumlist.OnResponse(func(r *colly.Response) {
 		if r.StatusCode != 200 {
 			return
 		}
 
-		var resp string = string(r.Body)
+		var (
+            reader []byte
+            err error
+            resp string
+        )
+
+		switch r.Headers.Get("Content-Encoding") {
+		case "gzip":
+			reader, err = utils.ParseGzip(r.Body)
+			if err != nil {
+				return
+			}
+		default:
+			reader = r.Body
+		}
+
+		resp = string(reader)
 		resp = resp[13+strings.Index(resp, `'albumList': [`):]
 		jsonData := resp[:2+strings.Index(resp, `}],`)]
 
@@ -108,20 +134,27 @@ func RenRen() *controller.Task {
 			} `json: "albumList"`
 		}{}
 
-		err := json.Unmarshal([]byte(jsonData), &data.AlbumList)
+		err = json.Unmarshal([]byte(jsonData), &data.AlbumList)
 		if err != nil {
-			log.Warn("albumList unmarshal error: ", err)
+			log.Warn("albumList unmarshal error: ", err, r.Request.URL.String())
 			log.Warn(resp)
 			return
 		}
 
 		for _, v := range data.AlbumList {
 			link := fmt.Sprintf("http://photo.renren.com/photo/%d/album-%s/v7", v.OwnerId, v.AlbumId)
-			album.Visit(link)
+			fmt.Println(link)
+			//photolist.Visit(link)
 		}
 	})
 
-	album.OnResponse(func(r *colly.Response) {
+	photolist.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Upgrade-Insecure-Requests", "1")
+		r.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36")
+		r.Headers.Set("Cache-Control", "0")
+	})
+
+	photolist.OnResponse(func(r *colly.Response) {
 		if r.StatusCode != 200 {
 			return
 		}
@@ -156,7 +189,8 @@ func RenRen() *controller.Task {
 
 		err := json.Unmarshal([]byte(jsonData), &data)
 		if err != nil {
-			log.Warn("photoList unmarshal error: ", err)
+			log.Warn("photoList unmarshal error: ", err, r.Request.URL.String())
+			log.Warn(resp)
 			return
 		}
 

@@ -61,15 +61,17 @@ func (s *Storage) Clear() error {
 	return s.Client.Del(keys...).Err()
 }
 
-
+// Clear removes all visited url entries from the storage
 func (s *Storage) ClearURL() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	r := s.Client.Keys(s.Prefix + ":request:*")
 	keys, err := r.Result()
 	if err != nil {
 		return err
 	}
+
 	keys = append(keys, s.getQueueID())
 	return s.Client.Del(keys...).Err()
 }

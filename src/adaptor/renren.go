@@ -15,19 +15,21 @@ import (
 func RenRenLogin(c *colly.Collector) (err error) {
 
 	c.OnResponse(func(r *colly.Response) {
-		//     log.Info("logon resp=", string(r.Body))
+		log.Info("logon resp=", string(r.Body))
 	})
 
 	//vcode := "http://icode.renren.com/getcode.do?t=login&rnd=Math.random()"
 	url := "http://www.renren.com/PLogin.do"
 	err = c.Post(url, map[string]string{
-		"email":     "chenny7@163.com",
-		"password":  "01de442283a34e82bccaa036b91f775d70398fe90478d0c41eedb873009784ab",
-		"autoLogin": "true",
-		"key_id":    "1",
-		"rkey":      "39b392090c635431e86ef76d46f31f40",
-		"f":         "http%3A%2F%2Fwww.renren.com%2F222386426",
-		"domain":    "renren.com"})
+		"email":        "chenny7@163.com",
+		"autoLogin":    "true",
+		"captcha_type": "web_login",
+		"origURL":      "http://www.renren.com/home",
+		"key_id":       "1",
+		"rkey":         "5b625fd2e7bb436f20f4c7905430b4e1",
+		"password":     "060bf26c485a659818f9da48415291d4440d15071f40eeb8e4a2948fdcebecaf",
+		"f":            "http%3A%2F%2Fwww.renren.com%2F222386426",
+		"domain":       "renren.com"})
 
 	return
 }
@@ -103,10 +105,10 @@ func RenRen() *controller.Task {
 		}
 
 		var (
-            reader []byte
-            err error
-            resp string
-        )
+			reader []byte
+			err    error
+			resp   string
+		)
 
 		switch r.Headers.Get("Content-Encoding") {
 		case "gzip":
@@ -119,6 +121,16 @@ func RenRen() *controller.Task {
 		}
 
 		resp = string(reader)
+		// skip if there is no permission or album is empty
+		if strings.Contains(resp, `您没有操作本资源的权限`) {
+			return
+		} else if strings.Contains(resp, `'albumCount': 0`) {
+			return
+		} else if strings.Contains(resp, `抱歉，出错了`) {
+			task.Retry(r.Request, 3)
+			return
+		}
+
 		resp = resp[13+strings.Index(resp, `'albumList': [`):]
 		jsonData := resp[:2+strings.Index(resp, `}],`)]
 
@@ -136,15 +148,15 @@ func RenRen() *controller.Task {
 
 		err = json.Unmarshal([]byte(jsonData), &data.AlbumList)
 		if err != nil {
-			log.Warn("albumList unmarshal error: ", err, r.Request.URL.String())
-			log.Warn(resp)
+			log.Warnf("albumList unmarshal %s error %s: %s",
+				err, r.Request.URL.String(), resp)
 			return
 		}
 
 		for _, v := range data.AlbumList {
 			link := fmt.Sprintf("http://photo.renren.com/photo/%d/album-%s/v7", v.OwnerId, v.AlbumId)
 			fmt.Println(link)
-			//photolist.Visit(link)
+			photolist.Visit(link)
 		}
 	})
 
@@ -160,6 +172,22 @@ func RenRen() *controller.Task {
 		}
 
 		var resp string = string(r.Body)
+		// skip if there is no permission
+		if strings.Contains(resp, `您没有操作本资源的权限`) {
+			return
+		} else if strings.Contains(resp, `该相册设置了密码保护，输入密码后才允许访问`) {
+			return
+		} else if strings.Contains(resp, `抱歉，出错了`) {
+			task.Retry(r.Request, 3)
+			return
+		}
+
+		controller.HTMLPreview(r,
+			`.fd-nav-item > a[href $="profile"]`,
+			func(e *colly.HTMLElement) {
+				e.Response.Ctx.Put("name", e.Text)
+			})
+
 		resp = resp[13+strings.Index(resp, `{"photoList":{`):]
 		jsonData := resp[:1+strings.Index(resp, `}};`)]
 
@@ -171,10 +199,16 @@ func RenRen() *controller.Task {
 		re := regexp.MustCompile(`'(\w+)' ?:`)
 		jsonData = re.ReplaceAllString(jsonData, `"$1":`)
 
-		re = regexp.MustCompile(": ?'([0-9a-zA-Z\u0391-\uFFE5]*)'")
+		re = regexp.MustCompile(": ?'(.*?)'")
 		jsonData = re.ReplaceAllString(jsonData, `:"$1"`)
 
-		log.Infof("json=%s", jsonData)
+		reg := regexp.MustCompile(`photo\/(\d+)\/album-`)
+		ret := reg.FindStringSubmatch(r.Request.URL.String())
+		uid := "0"
+		if len(ret) < 2 {
+			log.Warn("capture photo uid failed")
+		}
+		uid = ret[1]
 
 		data := struct {
 			AlbumId   uint64 `json: "albumId"`
@@ -189,15 +223,28 @@ func RenRen() *controller.Task {
 
 		err := json.Unmarshal([]byte(jsonData), &data)
 		if err != nil {
-			log.Warn("photoList unmarshal error: ", err, r.Request.URL.String())
-			log.Warn(resp)
+			log.Warnf("photoList unmarshal %s error %s: %s",
+				err, r.Request.URL.String(), resp)
 			return
 		}
 
 		for _, v := range data.PhotoList {
-			title := data.AlbumName
-			//task.CreateTaskItem(title, v.URL)
-			log.Infof("got one image %s %s", title, v.URL)
+			name := uid + "_" + r.Ctx.Get("name")
+			desc := data.AlbumName
+			log.Infof("got one image %s %s %s", name, desc, v.URL)
+			status := controller.Download_INIT
+			imgContent := controller.Download(v.URL)
+			if imgContent == nil {
+				status = controller.Download_DownFAIL
+				continue
+			}
+			digest, filepath, err := controller.Save(name, desc, imgContent)
+			if err == nil {
+				status = controller.Download_NORMAL
+			} else {
+				status = controller.Download_SAVEFAIL
+			}
+			task.CreateTaskItem(name, v.URL, desc, digest, filepath, status)
 		}
 
 	})

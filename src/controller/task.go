@@ -5,6 +5,7 @@ import (
 	"img-crawler/src/dao"
 	"img-crawler/src/log"
 	"strings"
+	"sync"
 
 	"github.com/gocolly/colly"
 )
@@ -20,6 +21,8 @@ type Task struct {
 	desc  string
 	C     []*colly.Collector
 	Logon *Login
+	retry map[string]uint8
+	lock  *sync.Mutex
 }
 
 func NewTaskController(name, desc string, seeds []string, num_cc int, login *Login) *Task {
@@ -33,7 +36,7 @@ func NewTaskController(name, desc string, seeds []string, num_cc int, login *Log
 
 	// login
 	if login != nil {
-		login.Action(l)
+		//login.Action(l)
 		l.Wait()
 	}
 
@@ -47,6 +50,8 @@ func NewTaskController(name, desc string, seeds []string, num_cc int, login *Log
 		seeds: seeds,
 		desc:  desc,
 		C:     C,
+		retry: make(map[string]uint8),
+		lock:  &sync.Mutex{},
 	}
 }
 
@@ -56,8 +61,8 @@ func (task *Task) GeneralCB(cs ...*colly.Collector) {
 	for _, c := range cs {
 
 		c.OnRequest(func(r *colly.Request) {
+			log.Info("Visiting:", r.URL.String())
 			/*
-				log.Info("Visiting:", r.URL.String())
 				log.Info("Host:", r.Headers.Get("Host"))
 				log.Info("Cookie:", r.Headers.Get("Cookie"))
 				log.Info("Referer:", r.Headers.Get("Referer"))
@@ -74,8 +79,37 @@ func (task *Task) GeneralCB(cs ...*colly.Collector) {
 		})
 
 		c.OnError(func(r *colly.Response, err error) {
-			log.Warnf("Error Request %s %s", r.Request.URL.String(), err)
+			log.Warnf("Error Request %s [%d]%s",
+				r.Request.URL.String(), r.StatusCode, err)
+			if r.StatusCode == 503 {
+				task.Retry(r.Request, 3)
+			}
 		})
+	}
+}
+
+func (task *Task) getRetryCnt(url string, max uint8) uint8 {
+	task.lock.Lock()
+	defer task.lock.Unlock()
+
+	if _, ok := task.retry[url]; ok {
+		task.retry[url]++
+	} else {
+		task.retry[url] = 1
+	}
+
+	cnt := task.retry[url]
+	if cnt > max {
+		//delete(task.retry, url)
+	}
+	return cnt
+}
+
+func (task *Task) Retry(r *colly.Request, max uint8) {
+	url := r.URL.String()
+	cnt := task.getRetryCnt(url, max)
+	if cnt <= max {
+		r.Retry()
 	}
 }
 
@@ -103,7 +137,7 @@ func (task *Task) createTask() (id uint64, err error) {
 	t.Name = task.name
 	t.Seeds = strings.Join(task.seeds, ",")
 	if len(task.desc) > 0 {
-		t.Desc = sql.NullString{String: task.desc, Valid: true}
+		t.Desc = sql.NullString{task.desc, true}
 	}
 
 	id, err = taskDAO.CreateTask(t)
@@ -123,12 +157,26 @@ func (task *Task) createTask() (id uint64, err error) {
 	return
 }
 
-func (task *Task) CreateTaskItem(name, url string) {
+func (task *Task) CreateTaskItem(name, url, desc, digest, filepath string, status int) {
 	item := new(dao.TaskItem)
 	item.TaskID = task.Id
 	item.Name = name
 	item.Url = url
-	taskDAO.CreateTaskItem(item, task.Id)
+	item.Status = status
+	if len(desc) > 0 {
+		item.Desc = sql.NullString{desc, true}
+	}
+	if len(digest) > 0 {
+		item.Digest = sql.NullString{digest, true}
+	}
+	if len(filepath) > 0 {
+		item.FilePath = sql.NullString{filepath, true}
+	}
+
+	_, err := taskDAO.CreateTaskItem(item, task.Id)
+	if err != nil {
+		log.Errorf("CreateTaskItem failed %s,%s,%s", name, url, desc)
+	}
 }
 
 var (

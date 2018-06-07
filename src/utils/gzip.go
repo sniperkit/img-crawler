@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
-    "img-crawler/src/log"
+	"img-crawler/src/log"
 	"io/ioutil"
 )
 

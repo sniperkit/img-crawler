@@ -1,32 +1,44 @@
 package controller
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"img-crawler/src/conf"
 	"img-crawler/src/log"
-	"img-crawler/src/utils"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"strings"
+	//    "github.com/gocolly/colly/queue"
 	"path/filepath"
 	"time"
 )
 
-func Save(title string, content []byte) {
+func Save(dir, desc string, content []byte) (string, string, error) {
 
-	base := filepath.Join(conf.Config.Img_dir, title)
-	err := os.MkdirAll(base, 0666)
+	base := filepath.Join(conf.Config.Img_dir, dir)
+	err := os.MkdirAll(base, 0755)
 	if err != nil {
-		log.Warnf("Save mkdir %s error %s", title, err)
-		return
+		log.Warnf("Save mkdir %s error %s", dir, err)
+		return "", "", err
 	}
 
-	filename := utils.GenerateUuidV4()
-	err = ioutil.WriteFile(filepath.Join(base, title, filename), content, 0666)
-	if err != nil {
-		log.Warnf("Save write %s error %s", title, err)
+	h := md5.New()
+	h.Write(content)
+	digest := hex.EncodeToString(h.Sum(nil))
+	filename := digest
+	if len(desc) > 0 {
+		filename = desc + "_" + digest
 	}
 
+	filename = filepath.Join(base, filename)
+	err = ioutil.WriteFile(filename, content, 0744)
+	if err != nil {
+		log.Warnf("Save write %s error %s", dir, err)
+		return "", "", err
+	}
+	return digest, filename, nil
 }
 
 func Download(url string) []byte {
@@ -50,6 +62,11 @@ func Download(url string) []byte {
 		return nil
 	}
 
+    ct := res.Header.Get("Content-Type")
+    if !strings.Contains(ct, "image") {
+        log.Warnf("%s Content-Type not contains image", url)
+    }
+
 	return body
 }
 
@@ -64,7 +81,7 @@ func NewClient() *http.Client {
 		MaxIdleConns:          128,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+		ExpectContinueTimeout: 30 * time.Second,
 	}
 
 	client := &http.Client{

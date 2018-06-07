@@ -87,7 +87,7 @@ func pageProcess(task *controller.Task, title, link string) {
 	base_url := "http://mat1.gtimg.com/datalib_img/star/"
 	for _, img := range data.ArrPic {
 		url := base_url + img.SOriginalImgUrl
-		task.CreateTaskItem(title, url)
+		task.CreateTaskItem(title, url, "", "", "", 0)
 		log.Infof("got one image %s %s", title, url)
 	}
 }

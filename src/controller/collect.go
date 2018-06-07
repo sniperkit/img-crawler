@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"bytes"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
 	"github.com/gocolly/colly/proxy"
@@ -30,7 +33,7 @@ func CreateCollector() *colly.Collector {
 		MaxIdleConns:          65535,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 2 * time.Second,
+		ExpectContinueTimeout: 30 * time.Second,
 	})
 
 	c.Async = true
@@ -57,7 +60,7 @@ func CreateCollector() *colly.Collector {
 		}
 
 		// delete previous data from storage
-		if err := storage.Clear(); err != nil {
+		if err := storage.ClearURL(); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -91,4 +94,22 @@ func CreateCollector() *colly.Collector {
 	c.CacheDir = conf.Config.Collector.Cache_dir
 
 	return c
+}
+
+func HTMLPreview(resp *colly.Response, goquerySelector string, f colly.HTMLCallback) error {
+	if !strings.Contains(strings.ToLower(resp.Headers.Get("Content-Type")), "html") {
+		return nil
+	}
+	doc, err := goquery.NewDocumentFromReader(bytes.NewBuffer(resp.Body))
+	if err != nil {
+		return err
+	}
+
+	doc.Find(goquerySelector).Each(func(i int, s *goquery.Selection) {
+		for _, n := range s.Nodes {
+			e := colly.NewHTMLElementFromSelectionNode(resp, s, n)
+			f(e)
+		}
+	})
+	return nil
 }

@@ -79,5 +79,5 @@ func parseURL(title, link string) {
 	if imgContent == nil {
 		return
 	}
-	controller.Save(title, imgContent)
+	controller.Save(title, "", imgContent)
 }

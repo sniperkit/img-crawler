@@ -6,7 +6,7 @@ import (
 	"img-crawler/src/log"
 	"strings"
 	"sync"
-
+    "time"
 	"github.com/gocolly/colly"
 )
 
@@ -20,12 +20,14 @@ type Task struct {
 	seeds []string
 	desc  string
 	C     []*colly.Collector
+    download *colly.Collector
 	Logon *Login
 	retry map[string]uint8
 	lock  *sync.Mutex
 }
 
-func NewTaskController(name, desc string, seeds []string, num_cc int, login *Login) *Task {
+func NewTaskController(name, desc string, seeds []string, 
+        num_cc int, download_pic bool, login *Login) *Task {
 
 	if num_cc < 1 {
 		num_cc = 1
@@ -50,6 +52,7 @@ func NewTaskController(name, desc string, seeds []string, num_cc int, login *Log
 		seeds: seeds,
 		desc:  desc,
 		C:     C,
+        download: C[0],
 		retry: make(map[string]uint8),
 		lock:  &sync.Mutex{},
 	}
@@ -132,7 +135,7 @@ func (task *Task) Do() {
 	log.Infof("Job %s Done!", task.name)
 }
 
-func (task *Task) createTask() (id uint64, err error) {
+func (task *Task) createTask() (err error) {
 	t := new(dao.Task)
 	t.Name = task.name
 	t.Seeds = strings.Join(task.seeds, ",")
@@ -140,20 +143,17 @@ func (task *Task) createTask() (id uint64, err error) {
 		t.Desc = sql.NullString{task.desc, true}
 	}
 
-	id, err = taskDAO.CreateTask(t)
-	if err == nil {
-		task.Id = id
-		taskDAO.CreateItemTable(id)
-
-	} else {
-		result, err := taskDAO.Get(map[string]interface{}{"name": t.Name}, false)
-		log.Infof("name=%s", t.Name)
+	task.Id, err = taskDAO.CreateTask(t)
+	if err != nil {
+		result, err := taskDAO.Get(map[string]interface{}{"name": t.Name})
 		if err == nil {
 			task.Id = result.ID
 		} else {
-			log.Fatalf("CreateTask got no id")
+			log.Fatalf("CreateTask failed %s", t.Name)
 		}
 	}
+
+    taskDAO.CreateItemTable(task.Id)
 	return
 }
 
@@ -177,6 +177,60 @@ func (task *Task) CreateTaskItem(name, url, desc, digest, filepath string, statu
 	if err != nil {
 		log.Errorf("CreateTaskItem failed %s,%s,%s", name, url, desc)
 	}
+}
+
+func (task *Task) UpdateTaskItem(name, url, desc, digest, filepath string, status int) {
+
+    // where
+    c := map[string]interface{}{
+        "name": name,
+        "url": url,
+    }
+
+    // set
+    v := map[string]interface{}{
+        "status": status,
+        "filepath": filepath,
+        "digest": digest,
+    }
+
+	_, err := taskDAO.Update(true, c, v)
+	if err != nil {
+		log.Errorf("UpdateTaskItem failed %s,%s,%s", name, url, desc)
+	}
+}
+
+func (task *Task) DownloadImg() {
+ //   taskDAO.ListItems(Download_INIT)
+//    taskDAO.ListItems(Download_SAVEFAIL)
+
+	task.createTask()
+    var num uint64 = 100
+//    task.download.Async = false
+    Download(task.download)
+    for {
+        items, err := taskDAO.ListItems(Download_DownFAIL, num)
+        if err != nil {
+            log.Errorf("ListItems error")
+            return;
+        }
+
+        for _,item := range items {
+
+            ctx := colly.NewContext()
+            ctx.Put("name", item.Name)
+            if item.Desc.Valid {
+                ctx.Put("desc", item.Desc.String)
+            }
+            ctx.Put("task", task)
+            task.download.Request("GET", item.Url, nil, ctx, nil)
+            time.Sleep(time.Duration(10) * time.Millisecond)
+        }
+
+        task.download.Wait()
+    }
+
+
 }
 
 var (

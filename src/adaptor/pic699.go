@@ -11,12 +11,14 @@ import (
 )
 
 func Pic_699() *controller.Task {
+    download_pic := false
 
 	task := controller.NewTaskController(
 		"摄图网",
 		"http://699pic.com/photo/",
 		[]string{"http://699pic.com/photo/"},
 		2,
+        download_pic,
 		nil)
 
 	c, detailCollector := task.C[0], task.C[1]
@@ -75,9 +77,10 @@ func parseURL(title, link string) {
 	img := fmt.Sprintf("http://seopic.699pic.com/photo/%s/%s.jpg_wh1200.jpg", pid[:5], pid[5:])
 	log.Infof("[%s] got one image, src=%s", title, img)
 
-	imgContent := controller.Download(img)
-	if imgContent == nil {
-		return
-	}
-	controller.Save(title, "", imgContent)
+	/*
+		ctx := colly.NewContext()
+		ctx.Put("name", title)
+		ctx.Put("desc", "")
+		download.Request("GET", v.URL, nil, ctx, nil)
+	*/
 }

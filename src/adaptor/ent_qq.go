@@ -11,12 +11,14 @@ import (
 )
 
 func Ent_qq() *controller.Task {
+    download_pic := false
 
 	task := controller.NewTaskController(
 		"qq明星",
 		"qq娱乐明星库",
 		[]string{"http://ent.qq.com/c/all_star.shtml"},
 		1,
+        download_pic,
 		nil)
 
 	c := task.C[0]
@@ -45,7 +47,8 @@ func pageProcess(task *controller.Task, title, link string) {
 		}
 	}()
 
-	res := controller.Download(link)
+	//res, _,_ := controller.Download(link)
+    var res []byte
 	if res == nil {
 		return
 	}

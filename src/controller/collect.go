@@ -30,7 +30,7 @@ func CreateCollector() *colly.Collector {
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).DialContext,
-		MaxIdleConns:          65535,
+		MaxIdleConns:          1024,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 30 * time.Second,

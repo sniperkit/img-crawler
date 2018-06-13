@@ -8,6 +8,7 @@ import (
 	"img-crawler/src/utils"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly"
 )
@@ -36,12 +37,20 @@ func RenRenLogin(c *colly.Collector) (err error) {
 
 func RenRen() *controller.Task {
 
+    download_pic := true
+
 	task := controller.NewTaskController(
-		"人人网",
+		"人人网2",
 		"社交网络好友照片",
 		[]string{"http://friend.renren.com/GetFriendList.do?curpage=0&id=221940758"},
-		4,
+		3,
+        download_pic,
 		&controller.Login{Action: RenRenLogin})
+
+
+    if download_pic {
+        return task
+    }
 
 	c := task.C[0]
 	albumlist := task.C[1]
@@ -86,6 +95,7 @@ func RenRen() *controller.Task {
 
 			link := fmt.Sprintf("http://photo.renren.com/photo/%s/albumlist/v7?offset=0&limit=20", uid)
 			albumlist.Visit(link)
+			time.Sleep(time.Duration(100) * time.Millisecond)
 		})
 
 	albumlist.OnRequest(func(r *colly.Request) {
@@ -206,9 +216,10 @@ func RenRen() *controller.Task {
 		ret := reg.FindStringSubmatch(r.Request.URL.String())
 		uid := "0"
 		if len(ret) < 2 {
-			log.Warn("capture photo uid failed")
+			log.Errorf("capture photo uid failed, %s", r.Request.URL.String())
+		} else {
+			uid = ret[1]
 		}
-		uid = ret[1]
 
 		data := struct {
 			AlbumId   uint64 `json: "albumId"`
@@ -231,20 +242,9 @@ func RenRen() *controller.Task {
 		for _, v := range data.PhotoList {
 			name := uid + "_" + r.Ctx.Get("name")
 			desc := data.AlbumName
+
 			log.Infof("got one image %s %s %s", name, desc, v.URL)
-			status := controller.Download_INIT
-			imgContent := controller.Download(v.URL)
-			if imgContent == nil {
-				status = controller.Download_DownFAIL
-				continue
-			}
-			digest, filepath, err := controller.Save(name, desc, imgContent)
-			if err == nil {
-				status = controller.Download_NORMAL
-			} else {
-				status = controller.Download_SAVEFAIL
-			}
-			task.CreateTaskItem(name, v.URL, desc, digest, filepath, status)
+            task.CreateTaskItem(name, v.URL, desc, "", "", controller.Download_INIT)
 		}
 
 	})

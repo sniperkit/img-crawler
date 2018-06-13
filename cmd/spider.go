@@ -17,7 +17,8 @@ func main() {
 	//wg.Wrap(task_pic_699.Do)
 
 	task_renren := adaptor.RenRen()
-	wg.Wrap(task_renren.Do)
+	//wg.Wrap(task_renren.Do)
+	wg.Wrap(task_renren.DownloadImg)
 
 	// Wait all tasks completed
 	wg.Wait()

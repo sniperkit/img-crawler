@@ -4,95 +4,87 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"img-crawler/src/conf"
-	"img-crawler/src/log"
-	"io/ioutil"
-	"net"
-	"net/http"
+    "img-crawler/src/log"
 	"os"
 	"strings"
-	//    "github.com/gocolly/colly/queue"
+	//	"github.com/gocolly/colly/queue"
 	"path/filepath"
-	"time"
+	"regexp"
+	"github.com/gocolly/colly"
 )
 
-func Save(dir, desc string, content []byte) (string, string, error) {
+func genFilename(dir, desc, suffix, digest string) string {
 
-	base := filepath.Join(conf.Config.Img_dir, dir)
-	err := os.MkdirAll(base, 0755)
-	if err != nil {
-		log.Warnf("Save mkdir %s error %s", dir, err)
-		return "", "", err
-	}
-
-	h := md5.New()
-	h.Write(content)
-	digest := hex.EncodeToString(h.Sum(nil))
 	filename := digest
 	if len(desc) > 0 {
-		filename = desc + "_" + digest
+		filename = desc + "_" + filename
+	}
+	if len(suffix) > 0 {
+		filename += "." + suffix
 	}
 
-	filename = filepath.Join(base, filename)
-	err = ioutil.WriteFile(filename, content, 0744)
-	if err != nil {
-		log.Warnf("Save write %s error %s", dir, err)
-		return "", "", err
-	}
-	return digest, filename, nil
+	filename = strings.Replace(filename, "/", "", -1)
+	filename = filepath.Join(dir, filename)
+	return filename
 }
 
-func Download(url string) []byte {
+func Download(c *colly.Collector) {
 
-	res, err := client.Get(url)
-	if err != nil {
-		log.Warnf("download get %s error %s", url, err)
-		return nil
-	}
+	c.OnResponse(func(r *colly.Response) {
 
-	defer res.Body.Close()
+		var (
+			digest   string
+			suffix   string
+			filename string
+		)
+		status := Download_INIT
+		url := r.Request.URL.String()
+		name := r.Ctx.Get("name")
+		desc := r.Ctx.Get("desc")
+        task := r.Ctx.GetAny("task").(*Task)
 
-	if res.StatusCode != 200 {
-		log.Warnf("download bad res, status=%s", url, res.StatusCode)
-		return nil
-	}
+        log.Infof("Download %s", url)
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Warnf("download read %s error %s", url, err)
-		return nil
-	}
+		// download failed
+		if r.StatusCode != 200 {
+			status = Download_DownFAIL
+            log.Errorf("download get failed %d %s", url, r.StatusCode)
+            return
+		}
 
-    ct := res.Header.Get("Content-Type")
-    if !strings.Contains(ct, "image") {
-        log.Warnf("%s Content-Type not contains image", url)
-    }
+		// image suffix
+		ct := r.Headers.Get("Content-Type")
+		reg := regexp.MustCompile(`image/(\w+)`)
+		ret := reg.FindStringSubmatch(ct)
+		if len(ret) >= 2 {
+			suffix = ret[1]
+		}
 
-	return body
-}
+		// md5sum
+		h := md5.New()
+		h.Write(r.Body)
+		digest = hex.EncodeToString(h.Sum(nil))
 
-func NewClient() *http.Client {
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          128,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 30 * time.Second,
-	}
+		// mkdir
+		base := filepath.Join(conf.Config.Img_dir, name)
+		if _, err := os.Stat(base); err != nil {
+			if err := os.MkdirAll(base, 0750); err != nil {
+                log.Errorf("download mkdir failed %s %s", base, err)
+                return
+			}
+		}
 
-	client := &http.Client{
-		Transport: tr,
-	}
+		// write to disk
+		filename = genFilename(base, desc, suffix, digest)
+		if err := r.Save(filename); err != nil {
+			status = Download_SAVEFAIL
+		} else {
+			status = Download_NORMAL
+		}
 
-	return client
-}
+		// insert into mysql
+		task.UpdateTaskItem(name, url, desc, digest, filename, status)
 
-var client *http.Client
+	})
 
-func init() {
-	client = NewClient()
 }

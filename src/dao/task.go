@@ -8,6 +8,7 @@ import (
 	"img-crawler/src/log"
 	"img-crawler/src/utils"
 	"time"
+    "strconv"
 
 	"github.com/jmoiron/sqlx"
 	sq "gopkg.in/Masterminds/squirrel.v1"
@@ -43,15 +44,17 @@ type TaskDAO interface {
 	CreateTask(*Task) (uint64, error)
 	CreateTaskItem(item *TaskItem, taskID uint64) (uint64, error)
 	CreateItemTable(uint64)
-	Get(map[string]interface{}, bool) (*Task, error)
-	List(map[string]interface{}) ([]*Task, error)
-	Update(map[string]interface{}, map[string]interface{}) (int64, error)
+	Get(map[string]interface{}) (*Task, error)
+    ListItems(status,num uint64) ([]*TaskItem, error)
+	List(bool, map[string]interface{}) ([]*Task, error)
+	Update(bool, map[string]interface{}, map[string]interface{}) (int64, error)
 }
 
 type TaskDAOImpl struct {
 	pool *Pool
 	tb   string // table name
 	tb_n string // nested table name
+    Tb_r string
 }
 
 var _ TaskDAO = (*TaskDAOImpl)(nil)
@@ -60,16 +63,18 @@ func NewTaskDAO(pool *Pool) *TaskDAOImpl {
 	return &TaskDAOImpl{
 		pool: pool,
 		tb:   "tasks",
-		tb_n: "task_items"}
+		tb_n: "task_items",
+		Tb_r: "task_items_", }
 }
 
 func (dao *TaskDAOImpl) CreateItemTable(id uint64) {
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
-	schema := fmt.Sprintf("CREATE TABLE IF NOT EXISTS task_items_%d LIKE %s", id, dao.tb_n)
+    dao.Tb_r += strconv.FormatUint(id, 10)
+	schema := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s LIKE %s", dao.Tb_r, dao.tb_n)
 	db.MustExec(schema)
 }
 
-func (dao *TaskDAOImpl) Get(conditions map[string]interface{}, withItems bool) (*Task, error) {
+func (dao *TaskDAOImpl) Get(conditions map[string]interface{}) (*Task, error) {
 
 	db := sqlx.NewDb(dao.pool.Slave().GetDB(), "mysql")
 
@@ -85,16 +90,13 @@ func (dao *TaskDAOImpl) Get(conditions map[string]interface{}, withItems bool) (
 		return nil, err
 	}
 
-	task.items = make([]*TaskItem, 0)
-	if withItems == true {
-		task.items, _ = dao.listItems(db, task.ID)
-	}
-
 	return &task, nil
 }
 
-func (dao *TaskDAOImpl) listItems(db *sqlx.DB, id uint64) ([]*TaskItem, error) {
-	sql, args, err := sq.Select("*").From(dao.tb_n).Where(sq.Eq{"task_id": id}).ToSql()
+func (dao *TaskDAOImpl) ListItems(status, num uint64) ([]*TaskItem, error) {
+	db := sqlx.NewDb(dao.pool.Slave().GetDB(), "mysql")
+
+	sql, args, err := sq.Select("*").From(dao.Tb_r).Where(sq.Eq{"status": status}).Limit(num).ToSql()
 
 	log.Infof(sql, args...)
 
@@ -146,8 +148,7 @@ func (dao *TaskDAOImpl) CreateTaskItem(item *TaskItem, taskID uint64) (id uint64
 	clauses := GetMapping(*item)
 	clauses["task_id"] = taskID
 
-	tb_name := fmt.Sprintf("%s_%d", dao.tb_n, taskID)
-	sql, args, err := sq.Insert(tb_name).SetMap(clauses).ToSql()
+	sql, args, err := sq.Insert(dao.Tb_r).SetMap(clauses).ToSql()
 	utils.CheckError(err)
 
 	log.Infof(sql, args...)
@@ -161,7 +162,13 @@ func (dao *TaskDAOImpl) CreateTaskItem(item *TaskItem, taskID uint64) (id uint64
 }
 
 /* Dump all fileds, Rewrite one row */
-func (dao *TaskDAOImpl) Update(conditions, clauses map[string]interface{}) (int64, error) {
+func (dao *TaskDAOImpl) Update(items bool, conditions, clauses map[string]interface{}) (int64, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err := r.(error)
+			log.Errorf("DAO Update failed: %s", err)
+		}
+	}()
 
 	if len(clauses) == 0 || len(conditions) == 0 {
 		return 0, errors.New("UpdateTask Arguments Error")
@@ -172,7 +179,12 @@ func (dao *TaskDAOImpl) Update(conditions, clauses map[string]interface{}) (int6
 	var ctx = context.Background()
 	tx := db.MustBeginTx(ctx, nil)
 
-	sql, args, err := sq.Update(dao.tb).SetMap(clauses).Where(conditions).ToSql()
+    tb_name := dao.tb
+    if items {
+        tb_name = dao.Tb_r
+    }
+
+	sql, args, err := sq.Update(tb_name).SetMap(clauses).Where(conditions).ToSql()
 	utils.CheckError(err)
 
 	log.Infof(sql, args...)
@@ -189,10 +201,15 @@ func (dao *TaskDAOImpl) Update(conditions, clauses map[string]interface{}) (int6
 	return num, nil
 }
 
-func (dao *TaskDAOImpl) List(conditions map[string]interface{}) ([]*Task, error) {
+func (dao *TaskDAOImpl) List(items bool, conditions map[string]interface{}) ([]*Task, error) {
 	db := sqlx.NewDb(dao.pool.Slave().GetDB(), "mysql")
 
-	sql, args, err := sq.Select("*").From(dao.tb).Where(sq.Eq(conditions)).ToSql()
+    tb_name := dao.tb
+    if items {
+        tb_name = dao.Tb_r
+    }
+
+	sql, args, err := sq.Select("*").From(tb_name).Where(sq.Eq(conditions)).ToSql()
 
 	log.Infof(sql, args...)
 

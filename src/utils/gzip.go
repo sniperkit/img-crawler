@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"github.com/axgle/mahonia"
 	"img-crawler/src/log"
 	"io/ioutil"
 )
@@ -24,4 +25,14 @@ func ParseGzip(data []byte) ([]byte, error) {
 		}
 		return undatas, nil
 	}
+}
+
+
+func ConvertToString(src string, srcCode string, tagCode string) string {
+    srcCoder := mahonia.NewDecoder(srcCode)
+    srcResult := srcCoder.ConvertString(src)
+    tagCoder := mahonia.NewDecoder(tagCode)
+    _, cdata, _ := tagCoder.Translate([]byte(srcResult), true)
+    result := string(cdata)
+    return result
 }

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"img-crawler/src/log"
 	"img-crawler/src/utils"
+	"strconv"
 	"time"
-    "strconv"
 
 	"github.com/jmoiron/sqlx"
 	sq "gopkg.in/Masterminds/squirrel.v1"
@@ -45,7 +45,7 @@ type TaskDAO interface {
 	CreateTaskItem(item *TaskItem, taskID uint64) (uint64, error)
 	CreateItemTable(uint64)
 	Get(map[string]interface{}) (*Task, error)
-    ListItems(status,num uint64) ([]*TaskItem, error)
+	ListItems(status, num uint64) ([]*TaskItem, error)
 	List(bool, map[string]interface{}) ([]*Task, error)
 	Update(bool, map[string]interface{}, map[string]interface{}) (int64, error)
 }
@@ -54,7 +54,7 @@ type TaskDAOImpl struct {
 	pool *Pool
 	tb   string // table name
 	tb_n string // nested table name
-    Tb_r string
+	Tb_r string
 }
 
 var _ TaskDAO = (*TaskDAOImpl)(nil)
@@ -64,12 +64,12 @@ func NewTaskDAO(pool *Pool) *TaskDAOImpl {
 		pool: pool,
 		tb:   "tasks",
 		tb_n: "task_items",
-		Tb_r: "task_items_", }
+		Tb_r: "task_items_"}
 }
 
 func (dao *TaskDAOImpl) CreateItemTable(id uint64) {
 	db := sqlx.NewDb(dao.pool.Master().GetDB(), "mysql")
-    dao.Tb_r += strconv.FormatUint(id, 10)
+	dao.Tb_r += strconv.FormatUint(id, 10)
 	schema := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s LIKE %s", dao.Tb_r, dao.tb_n)
 	db.MustExec(schema)
 }
@@ -179,10 +179,10 @@ func (dao *TaskDAOImpl) Update(items bool, conditions, clauses map[string]interf
 	var ctx = context.Background()
 	tx := db.MustBeginTx(ctx, nil)
 
-    tb_name := dao.tb
-    if items {
-        tb_name = dao.Tb_r
-    }
+	tb_name := dao.tb
+	if items {
+		tb_name = dao.Tb_r
+	}
 
 	sql, args, err := sq.Update(tb_name).SetMap(clauses).Where(conditions).ToSql()
 	utils.CheckError(err)
@@ -204,10 +204,10 @@ func (dao *TaskDAOImpl) Update(items bool, conditions, clauses map[string]interf
 func (dao *TaskDAOImpl) List(items bool, conditions map[string]interface{}) ([]*Task, error) {
 	db := sqlx.NewDb(dao.pool.Slave().GetDB(), "mysql")
 
-    tb_name := dao.tb
-    if items {
-        tb_name = dao.Tb_r
-    }
+	tb_name := dao.tb
+	if items {
+		tb_name = dao.Tb_r
+	}
 
 	sql, args, err := sq.Select("*").From(tb_name).Where(sq.Eq(conditions)).ToSql()
 

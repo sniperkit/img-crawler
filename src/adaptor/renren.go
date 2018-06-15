@@ -37,20 +37,19 @@ func RenRenLogin(c *colly.Collector) (err error) {
 
 func RenRen() *controller.Task {
 
-    download_pic := true
+	download_pic := true
 
 	task := controller.NewTaskController(
 		"人人网2",
 		"社交网络好友照片",
 		[]string{"http://friend.renren.com/GetFriendList.do?curpage=0&id=221940758"},
 		3,
-        download_pic,
+		download_pic,
 		&controller.Login{Action: RenRenLogin})
 
-
-    if download_pic {
-        return task
-    }
+	if download_pic {
+		return task
+	}
 
 	c := task.C[0]
 	albumlist := task.C[1]
@@ -244,7 +243,7 @@ func RenRen() *controller.Task {
 			desc := data.AlbumName
 
 			log.Infof("got one image %s %s %s", name, desc, v.URL)
-            task.CreateTaskItem(name, v.URL, desc, "", "", controller.Download_INIT)
+			task.CreateTaskItem(name, v.URL, desc, "", "", controller.Download_INIT)
 		}
 
 	})

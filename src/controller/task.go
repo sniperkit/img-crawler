@@ -6,7 +6,7 @@ import (
 	"img-crawler/src/log"
 	"strings"
 	"sync"
-    "time"
+	//    "time"
 	"github.com/gocolly/colly"
 )
 
@@ -15,19 +15,19 @@ type Login struct {
 }
 
 type Task struct {
-	Id    uint64
-	name  string
-	seeds []string
-	desc  string
-	C     []*colly.Collector
-    download *colly.Collector
-	Logon *Login
-	retry map[string]uint8
-	lock  *sync.Mutex
+	Id       uint64
+	name     string
+	seeds    []string
+	desc     string
+	C        []*colly.Collector
+	download *colly.Collector
+	Logon    *Login
+	retry    map[string]uint8
+	lock     *sync.Mutex
 }
 
-func NewTaskController(name, desc string, seeds []string, 
-        num_cc int, download_pic bool, login *Login) *Task {
+func NewTaskController(name, desc string, seeds []string,
+	num_cc int, download_pic bool, login *Login) *Task {
 
 	if num_cc < 1 {
 		num_cc = 1
@@ -48,13 +48,13 @@ func NewTaskController(name, desc string, seeds []string,
 	}
 
 	return &Task{
-		name:  name,
-		seeds: seeds,
-		desc:  desc,
-		C:     C,
-        download: C[0],
-		retry: make(map[string]uint8),
-		lock:  &sync.Mutex{},
+		name:     name,
+		seeds:    seeds,
+		desc:     desc,
+		C:        C,
+		download: C[0],
+		retry:    make(map[string]uint8),
+		lock:     &sync.Mutex{},
 	}
 }
 
@@ -153,7 +153,7 @@ func (task *Task) createTask() (err error) {
 		}
 	}
 
-    taskDAO.CreateItemTable(task.Id)
+	taskDAO.CreateItemTable(task.Id)
 	return
 }
 
@@ -181,18 +181,24 @@ func (task *Task) CreateTaskItem(name, url, desc, digest, filepath string, statu
 
 func (task *Task) UpdateTaskItem(name, url, desc, digest, filepath string, status int) {
 
-    // where
-    c := map[string]interface{}{
-        "name": name,
-        "url": url,
-    }
+	// where
+	c := map[string]interface{}{
+		"name": name,
+		"url":  url,
+	}
 
-    // set
-    v := map[string]interface{}{
-        "status": status,
-        "filepath": filepath,
-        "digest": digest,
-    }
+	// set
+	v := map[string]interface{}{
+		"status": status,
+	}
+
+	if len(digest) > 0 {
+		v["digest"] = digest
+	}
+
+	if len(filepath) > 0 {
+		v["filepath"] = filepath
+	}
 
 	_, err := taskDAO.Update(true, c, v)
 	if err != nil {
@@ -201,36 +207,43 @@ func (task *Task) UpdateTaskItem(name, url, desc, digest, filepath string, statu
 }
 
 func (task *Task) DownloadImg() {
- //   taskDAO.ListItems(Download_INIT)
-//    taskDAO.ListItems(Download_SAVEFAIL)
+	//   taskDAO.ListItems(Download_INIT)
+	//    taskDAO.ListItems(Download_SAVEFAIL)
 
 	task.createTask()
-    var num uint64 = 100
-//    task.download.Async = false
-    Download(task.download)
-    for {
-        items, err := taskDAO.ListItems(Download_DownFAIL, num)
-        if err != nil {
-            log.Errorf("ListItems error")
-            return;
-        }
+	var num uint64 = 100
+	//    task.download.Async = false
+	Download(task.download)
+	for {
+		items, err := taskDAO.ListItems(Download_DownFAIL, num)
+		if err != nil {
+			log.Errorf("ListItems error")
+			return
+		}
 
-        for _,item := range items {
+		if 0 == len(items) {
+			log.Warnf("ListItems has no more items")
+			break
+		}
 
-            ctx := colly.NewContext()
-            ctx.Put("name", item.Name)
-            if item.Desc.Valid {
-                ctx.Put("desc", item.Desc.String)
-            }
-            ctx.Put("task", task)
-            task.download.Request("GET", item.Url, nil, ctx, nil)
-            time.Sleep(time.Duration(10) * time.Millisecond)
-        }
+		for _, item := range items {
+			//log.Infof("ListItems for %s ", item.Url)
 
-        task.download.Wait()
-    }
+			ctx := colly.NewContext()
+			ctx.Put("name", item.Name)
+			if item.Desc.Valid {
+				ctx.Put("desc", item.Desc.String)
+			}
+			ctx.Put("task", task)
+			task.download.Request("GET", item.Url, nil, ctx, nil)
+			//            time.Sleep(time.Duration(10) * time.Millisecond)
+		}
 
+		task.download.Wait()
+	}
 
+	task.download.Wait()
+	log.Infof("Download Job %s Done!", task.name)
 }
 
 var (

@@ -32,6 +32,12 @@
   revision = "7148e5d6bb845772731e3979df279a1b0e8e90ac"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/axgle/mahonia"
+  packages = ["."]
+  revision = "3358181d7394e26beccfae0ffde05193ef3be33a"
+
+[[projects]]
   name = "github.com/go-redis/redis"
   packages = [
     ".",
@@ -75,7 +81,6 @@
     "debug",
     "extensions",
     "proxy",
-    "queue",
     "storage"
   ]
   revision = "9a176fe5f869c7062819f7af968c03c662018c06"
@@ -219,6 +224,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "968bbb9432dfd95569a0ca5ec4e75e609f5387fe8282e44e2e3611fe0019915c"
+  inputs-digest = "c9b95ead8c02d36641c19fd319555d561caffa3687ffef548899da8d103364a9"
   solver-name = "gps-cdcl"
   solver-version = 1

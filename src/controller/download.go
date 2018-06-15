@@ -4,12 +4,13 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"img-crawler/src/conf"
-    "img-crawler/src/log"
+	"img-crawler/src/log"
 	"os"
 	"strings"
 	//	"github.com/gocolly/colly/queue"
 	"path/filepath"
 	"regexp"
+
 	"github.com/gocolly/colly"
 )
 
@@ -41,15 +42,15 @@ func Download(c *colly.Collector) {
 		url := r.Request.URL.String()
 		name := r.Ctx.Get("name")
 		desc := r.Ctx.Get("desc")
-        task := r.Ctx.GetAny("task").(*Task)
+		task := r.Ctx.GetAny("task").(*Task)
 
-        log.Infof("Download %s", url)
+		log.Infof("Download %s", url)
 
 		// download failed
 		if r.StatusCode != 200 {
 			status = Download_DownFAIL
-            log.Errorf("download get failed %d %s", url, r.StatusCode)
-            return
+			log.Errorf("download get failed %d %s", url, r.StatusCode)
+			return
 		}
 
 		// image suffix
@@ -69,8 +70,8 @@ func Download(c *colly.Collector) {
 		base := filepath.Join(conf.Config.Img_dir, name)
 		if _, err := os.Stat(base); err != nil {
 			if err := os.MkdirAll(base, 0750); err != nil {
-                log.Errorf("download mkdir failed %s %s", base, err)
-                return
+				log.Errorf("download mkdir failed %s %s", base, err)
+				return
 			}
 		}
 
@@ -85,6 +86,17 @@ func Download(c *colly.Collector) {
 		// insert into mysql
 		task.UpdateTaskItem(name, url, desc, digest, filename, status)
 
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		log.Warnf("Error Request %s [%d]%s",
+			r.Request.URL.String(), r.StatusCode, err)
+
+		url := r.Request.URL.String()
+		name := r.Ctx.Get("name")
+		desc := r.Ctx.Get("desc")
+		task := r.Ctx.GetAny("task").(*Task)
+		task.UpdateTaskItem(name, url, desc, "", "", r.StatusCode)
 	})
 
 }

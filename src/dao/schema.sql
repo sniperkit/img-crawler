@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `task_items` (
     `url` varchar(512) NOT NULL COMMENT '图片外链', 
     `filepath` varchar(256) DEFAULT NULL COMMENT '图片的本地保存地址', 
     `digest` varchar(32) DEFAULT NULL COMMENT '图片内容的hash签名，可用于去重',
-    `status` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '状态: 0未下载, 1下载失败, 2保存失败,3成功',
+    `status` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '状态: 0未下载, 1下载失败, 2保存失败,3成功',
     `effective` tinyint(4) unsigned NOT NULL DEFAULT '0' COMMENT '图片有效性: 0未判断, 1有人脸, 2无人脸',
     `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `modify_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

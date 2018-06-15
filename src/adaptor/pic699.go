@@ -11,14 +11,14 @@ import (
 )
 
 func Pic_699() *controller.Task {
-    download_pic := false
+	download_pic := false
 
 	task := controller.NewTaskController(
 		"摄图网",
 		"http://699pic.com/photo/",
 		[]string{"http://699pic.com/photo/"},
 		2,
-        download_pic,
+		download_pic,
 		nil)
 
 	c, detailCollector := task.C[0], task.C[1]
